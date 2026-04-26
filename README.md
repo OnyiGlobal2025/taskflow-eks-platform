@@ -22,7 +22,7 @@ In this phase, I built a **secure, scalable and cost-aware AWS Kubernetes founda
 
 #  Architecture Diagram
 
-![Architecture Diagram](docs/screenshots/project1-architecture.png)
+![Architecture Diagram](docs/screenshots/project-1-architecture.png)
 
 ---
 

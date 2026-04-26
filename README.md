@@ -67,13 +67,17 @@ Created:
 
 This follows real production design by separating public traffic from internal workloads.
 
-![Networking Resources](docs/screenshots/project1-architecture.png)
+## Virtual Private Cloud
+![Networking Resources](docs/screenshots/vpc.png)
+
+## Subnets
+![Networking Resources](docs/screenshots/subnets.png)
 
 ## 2. Amazon EKS Cluster
 
 Provisioned a managed Kubernetes control plane:
 
-taskflow-eks-cluster
+```taskflow-eks-cluster```
 
 Worker nodes were deployed into private subnets.
 
@@ -81,20 +85,24 @@ Worker nodes were deployed into private subnets.
 - Better security posture
 - No public exposure of nodes
 - Standard enterprise practice
-![EKS Cluster](docs/screenshots/project1-architecture.png)
+
+## EKS Cluster
+![EKS Cluster](docs/screenshots/eks-cluster.png)
 
 ## 3. Worker Nodes with Spot Instances
 
 Configured managed node groups using:
 
-capacity_type = "SPOT"
+```Capacity_type = "SPOT"```
+
 ## Why this matters
 
 Spot Instances significantly reduce cost during learning, testing and development workloads.
 
 This helped me optimize spend while building a real project.
 
-![Node Group](docs/screenshots/project1-architecture.png)
+## Node Group Created
+![Node Group](docs/screenshots/node-group-created.png)
 
 ## 4. IAM Roles & Permissions
 
@@ -115,11 +123,10 @@ My node group initially failed.
 
 Root cause:
 
-Missing AmazonEC2ContainerRegistryReadOnly policy
+```Missing AmazonEC2ContainerRegistryReadOnly policy```
 
 After attaching it through Terraform, node creation succeeded.
 
-📸 IAM Fix / Successful Node Group
 
 ## 5. Amazon ECR Repositories
 
@@ -132,7 +139,8 @@ Prepared container registries for future microservices deployment:
 
 This prepares Project 2 for Dockerized deployments.
 
-![ECR Repositories](docs/screenshots/project1-architecture.png)
+## ECR Repositories
+![ECR Repositories](docs/screenshots/ecr-repositories.png)
 
 ## Terraform Remote State & Locking
 
@@ -146,11 +154,16 @@ To follow production Terraform best practices, I configured:
 - Safer collaboration
 - Prevents simultaneous state corruption
 - Production-ready workflow
-![S3 Remote State Bucket](docs/screenshots/project1-architecture.png)
 
-![DynamoDB State Lock](docs/screenshots/project1-architecture.png)
+## S3 Remote State Bucket
+![S3 Remote State Bucket](docs/screenshots/terraform-state.png)
+
+## DynamoDB Lock Table
+![DynamoDB State Lock](docs/screenshots/dynamodb-lock-table.png)
 
 ## Project Structure
+
+```text
 taskflow-eks-platform/
 ├── project-1-infra/
 │   └── terraform/
@@ -163,6 +176,7 @@ taskflow-eks-platform/
 ├── project-2-app/
 ├── project-3-ops/
 └── README.md
+```
 
 ## Cost Optimization Strategy
 
@@ -174,8 +188,9 @@ Used Spot Instances for worker nodes to reduce compute costs.
 
 Because of unstable power/network conditions, infrastructure was intentionally designed to be:
 
-Destroyable when idle
-Recreatable on demand
+```Destroyable when idle```
+
+```Recreatable on demand```
 
 This reflects practical cost-conscious engineering.
 
@@ -215,7 +230,7 @@ Coming next:
 
 ## Final Thoughts
 
-This project was not about launching random resources.
+This project was not just about launching random resources.
 
 It was about building infrastructure that is:
 

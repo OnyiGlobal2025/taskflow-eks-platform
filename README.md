@@ -1,4 +1,4 @@
-# 🚀 Project 1: Production-Style AWS EKS Platform with Terraform
+#  Project 1: Production-Style AWS EKS Platform with Terraform
 
 ![AWS](https://img.shields.io/badge/AWS-EKS-orange?style=for-the-badge&logo=amazonaws)
 ![Terraform](https://img.shields.io/badge/IaC-Terraform-623CE4?style=for-the-badge&logo=terraform)
@@ -8,7 +8,7 @@
 
 ---
 
-# 📌 Overview
+#  Overview
 
 This project is **Phase 1** of my larger **TaskFlow Microservices DevOps Capstone**, where I am building a full production-ready cloud platform in 3 stages:
 
@@ -20,13 +20,13 @@ In this phase, I built a **secure, scalable and cost-aware AWS Kubernetes founda
 
 ---
 
-# 🏗️ Architecture Diagram
+#  Architecture Diagram
 
 ![Architecture Diagram](docs/screenshots/project1-architecture.png)
 
 ---
 
-# ⚙️ Tech Stack
+#  Tech Stack
 
 | Category | Tools |
 |--------|------|
@@ -42,11 +42,11 @@ In this phase, I built a **secure, scalable and cost-aware AWS Kubernetes founda
 
 ---
 
-# 🧱 What Was Built
+#  What Was Built
 
 ---
 
-## 🌐 1. Custom AWS Networking
+##  1. Custom AWS Networking
 
 Provisioned a dedicated VPC:
 
@@ -65,7 +65,7 @@ Created:
 
 This follows real production design by separating public traffic from internal workloads.
 
-📸 Networking Resources
+![Networking Resources](docs/screenshots/project1-architecture.png)
 
 ## 2. Amazon EKS Cluster
 
@@ -79,7 +79,7 @@ Worker nodes were deployed into private subnets.
 - Better security posture
 - No public exposure of nodes
 - Standard enterprise practice
-📸 EKS Cluster
+![EKS Cluster](docs/screenshots/project1-architecture.png)
 
 ## 3. Worker Nodes with Spot Instances
 
@@ -92,7 +92,7 @@ Spot Instances significantly reduce cost during learning, testing and developmen
 
 This helped me optimize spend while building a real project.
 
-📸 Node Group
+![Node Group](docs/screenshots/project1-architecture.png)
 
 ## 4. IAM Roles & Permissions
 
@@ -130,7 +130,7 @@ Prepared container registries for future microservices deployment:
 
 This prepares Project 2 for Dockerized deployments.
 
-📸 ECR Repositories
+![ECR Repositories](docs/screenshots/project1-architecture.png)
 
 ## Terraform Remote State & Locking
 
@@ -144,9 +144,9 @@ To follow production Terraform best practices, I configured:
 - Safer collaboration
 - Prevents simultaneous state corruption
 - Production-ready workflow
-📸 S3 Remote State Bucket
+![S3 Remote State Bucket](docs/screenshots/project1-architecture.png)
 
-📸 DynamoDB Lock Table
+![DynamoDB State Lock](docs/screenshots/project1-architecture.png)
 
 ## Project Structure
 taskflow-eks-platform/
@@ -178,7 +178,6 @@ Recreatable on demand
 This reflects practical cost-conscious engineering.
 
 ## Challenges Faced
-# 🧠 Challenges Faced
 
 | Challenge | Root Cause | Resolution |
 |---|---|---|

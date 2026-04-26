@@ -178,10 +178,14 @@ Recreatable on demand
 This reflects practical cost-conscious engineering.
 
 ## Challenges Faced
-Challenge	Resolution
-Node group unhealthy	Added missing ECR read-only IAM policy
-Terraform state lock errors	Used DynamoDB locking / force-unlock
-Dependency deletion delays	Allowed AWS cleanup and re-ran destroy
+# 🧠 Challenges Faced
+
+| Challenge | Root Cause | Resolution |
+|---|---|---|
+| EKS Node Group failed to become healthy | Missing `AmazonEC2ContainerRegistryReadOnly` policy on the node IAM role | Added the policy through Terraform so worker nodes could pull images from ECR |
+| Terraform state lock error | Previous Terraform command was interrupted and left a lock in DynamoDB | Used `terraform force-unlock` to safely remove the stale lock |
+| Subnet deletion failed during destroy | AWS resources/ENIs were still attached to the subnet | Waited for AWS cleanup, then re-ran `terraform destroy` |
+| Region prompt appeared during Terraform command | Terraform was not reading variables automatically at that moment | Used `terraform destroy -var-file="terraform.tfvars"` |
 
 ## Skills Demonstrated
 - AWS Networking

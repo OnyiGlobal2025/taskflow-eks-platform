@@ -51,7 +51,9 @@ In this phase, I built a **secure, scalable and cost-aware AWS Kubernetes founda
 Provisioned a dedicated VPC:
 
 
+```
 10.0.0.0/16
+```
 Created:
 
 - 2 Public Subnets

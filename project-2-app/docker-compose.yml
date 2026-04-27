@@ -1,0 +1,14 @@
+services:
+  backend:
+    image: taskflow-backend:v1
+    container_name: taskflow-backend
+    ports:
+      - "5000:5000"
+
+  frontend:
+    image: taskflow-frontend:v1
+    container_name: taskflow-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend

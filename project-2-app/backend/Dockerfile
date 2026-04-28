@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
@@ -9,12 +9,14 @@ RUN npm ci --omit=dev
 COPY . .
 
 
-FROM gcr.io/distroless/nodejs20-debian12
+FROM node:22-alpine
 
 WORKDIR /app
 
-COPY --from=build /app .
+ENV NODE_ENV=production
+
+COPY --from=build /app ./
 
 EXPOSE 5000
 
-CMD ["server.js"]
+CMD ["node", "server.js"]

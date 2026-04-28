@@ -8,7 +8,7 @@ on:
       - "project-2-app/**"
 
 jobs:
-  build-and-push:
+  build-scan-and-push:
     runs-on: ubuntu-latest
 
     steps:
@@ -37,21 +37,26 @@ jobs:
           docker build -t taskflow-frontend:v1 ./project-2-app/frontend
           docker tag taskflow-frontend:v1 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/taskflow-frontend:v1
 
-      # DevSecOps — Security Scan
-      - name: Scan Backend Image
+      - name: Scan Backend Image with Trivy
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: taskflow-backend:v1
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
 
-      - name: Scan Frontend Image
+      - name: Scan Frontend Image with Trivy
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: taskflow-frontend:v1
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
 
-      - name: Push Backend Image
+      - name: Push Backend Image to ECR
         run: |
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/taskflow-backend:v1
 
-      - name: Push Frontend Image
+      - name: Push Frontend Image to ECR
         run: |
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/taskflow-frontend:v1

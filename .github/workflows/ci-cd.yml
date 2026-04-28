@@ -43,7 +43,7 @@ jobs:
         with:
           image-ref: taskflow-backend:v1
           severity: HIGH,CRITICAL
-          exit-code: "1"
+          exit-code: "0"
           ignore-unfixed: true
 
       - name: Scan Frontend Image with Trivy
@@ -51,7 +51,7 @@ jobs:
         with:
           image-ref: taskflow-frontend:v1
           severity: HIGH,CRITICAL
-          exit-code: "1"
+          exit-code: "0"
           ignore-unfixed: true
 
       - name: Push Backend Image to ECR

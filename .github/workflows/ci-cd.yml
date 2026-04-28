@@ -39,12 +39,12 @@ jobs:
 
       # DevSecOps — Security Scan
       - name: Scan Backend Image
-        uses: aquasecurity/trivy-action@0.20.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: taskflow-backend:v1
 
       - name: Scan Frontend Image
-        uses: aquasecurity/trivy-action@0.20.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: taskflow-frontend:v1
 

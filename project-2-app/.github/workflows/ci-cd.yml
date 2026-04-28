@@ -1,0 +1,57 @@
+name: TaskFlow CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "project-2-app/**"
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 \
+          | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+
+      - name: Build Backend Image
+        run: |
+          docker build -t taskflow-backend:v1 ./project-2-app/backend
+          docker tag taskflow-backend:v1 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/taskflow-backend:v1
+
+      - name: Build Frontend Image
+        run: |
+          docker build -t taskflow-frontend:v1 ./project-2-app/frontend
+          docker tag taskflow-frontend:v1 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/taskflow-frontend:v1
+
+      # DevSecOps — Security Scan
+      - name: Scan Backend Image
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: taskflow-backend:v1
+
+      - name: Scan Frontend Image
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: taskflow-frontend:v1
+
+      - name: Push Backend Image
+        run: |
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/taskflow-backend:v1
+
+      - name: Push Frontend Image
+        run: |
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/taskflow-frontend:v1

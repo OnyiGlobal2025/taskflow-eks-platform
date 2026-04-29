@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: taskflow-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: taskflow.rules
+      rules:
+        - alert: TaskFlowPodDown
+          expr: kube_deployment_status_replicas_available{deployment=~"taskflow-backend|taskflow-frontend"} < 1
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "TaskFlow deployment has no available pods"
+            description: "One of the TaskFlow deployments has less than 1 available pod for more than 1 minute."

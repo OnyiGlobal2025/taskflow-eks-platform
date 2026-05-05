@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: taskflow-backend-monitor
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: taskflow-backend  # Ensure this matches the backend service's label
+  namespaceSelector:
+    matchNames:
+      - default  # Set to default, where the taskflow-backend-service is
+  endpoints:
+    - port: "http"
+      path: /metrics
+      interval: 30s

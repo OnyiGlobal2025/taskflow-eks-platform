@@ -1,4 +1,8 @@
-[![GitHub](https://img.shields.io/github/license/yourusername/taskflow-eks-platform?color=blue)](LICENSE) [![Build Status](https://img.shields.io/github/workflow/status/yourusername/taskflow-eks-platform/CI%20Pipeline)](https://github.com/yourusername/taskflow-eks-platform/actions) [![Docker](https://img.shields.io/badge/Docker-%20-blue?style=flat&logo=docker)](https://www.docker.com/) ![AWS](https://img.shields.io/badge/AWS-%20-yellow)
+ [![Docker](https://img.shields.io/badge/Docker-%20-blue?style=flat&logo=docker)](https://www.docker.com/) ![AWS](https://img.shields.io/badge/AWS-%20-yellow)[![CI Status](https://img.shields.io/github/workflow/status/your-username/your-repository/CI?label=CI&logo=github)](https://github.com/your-username/your-repository/actions)
+![Helm Status](https://img.shields.io/badge/helm-deployed-brightgreen?logo=helm)
+![Prometheus Monitoring](https://img.shields.io/badge/Prometheus-Enabled-brightgreen?logo=prometheus)
+![Grafana Monitoring](https://img.shields.io/badge/Grafana-Enabled-brightgreen?logo=grafana)
+![Trivy Security Scan](https://img.shields.io/badge/Trivy-Security%20Scan-brightgreen?logo=trivy)
 
 
 This repository contains the TaskFlow application, deployed on Amazon EKS. This second phase of the project includes the CI/CD pipeline, secure secret management, load balancing with AWS ALB, monitoring with Prometheus & Grafana, and security scans with Trivy.
@@ -23,6 +27,7 @@ The TaskFlow application is a microservices-based platform designed to be deploy
 - Configuring AWS ALB Ingress with OIDC and IRSA for secure Kubernetes access.
 - Service monitoring and alerting with Prometheus and Grafana to ensure uptime and system health.
 
+## Technology Stack
 
 | Technology              | Description                                                                              |
 | ----------------------- | ---------------------------------------------------------------------------------------- |

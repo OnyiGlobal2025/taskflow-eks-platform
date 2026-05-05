@@ -1,4 +1,4 @@
- [![Docker](https://img.shields.io/badge/Docker-%20-blue?style=flat&logo=docker)](https://www.docker.com/) ![AWS](https://img.shields.io/badge/AWS-%20-yellow)[![CI Status](https://img.shields.io/github/workflow/status/your-username/your-repository/CI?label=CI&logo=github)](https://github.com/your-username/your-repository/actions)
+ [![Docker](https://img.shields.io/badge/Docker-%20-blue?style=flat&logo=docker)](https://www.docker.com/) ![AWS](https://img.shields.io/badge/AWS-%20-yellow) ![GitHub Actions Status](https://img.shields.io/github/workflow/status/your-username/your-repository/CI?label=CI&logo=github)
 ![Helm Status](https://img.shields.io/badge/helm-deployed-brightgreen?logo=helm)
 ![Prometheus Monitoring](https://img.shields.io/badge/Prometheus-Enabled-brightgreen?logo=prometheus)
 ![Grafana Monitoring](https://img.shields.io/badge/Grafana-Enabled-brightgreen?logo=grafana)

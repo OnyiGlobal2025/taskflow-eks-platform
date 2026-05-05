@@ -1,4 +1,4 @@
- [![Docker](https://img.shields.io/badge/Docker-%20-blue?style=flat&logo=docker)](https://www.docker.com/) ![AWS](https://img.shields.io/badge/AWS-%20-yellow) ![GitHub Actions Status](https://img.shields.io/github/workflow/status/OnyiGlobal2025/taskflow-eks-platform/CI?label=CI&logo=github)
+ [![Docker](https://img.shields.io/badge/Docker-%20-blue?style=flat&logo=docker)](https://www.docker.com/) ![AWS](https://img.shields.io/badge/AWS-%20-yellow) ![GitHub Actions Status]
 ![Helm Status](https://img.shields.io/badge/helm-deployed-brightgreen?logo=helm)
 ![Prometheus Monitoring](https://img.shields.io/badge/Prometheus-Enabled-brightgreen?logo=prometheus)
 ![Grafana Monitoring](https://img.shields.io/badge/Grafana-Enabled-brightgreen?logo=grafana)

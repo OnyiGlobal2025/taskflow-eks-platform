@@ -12,6 +12,7 @@ This repository contains the TaskFlow application, deployed on Amazon EKS. This 
 - Technologies Used
 - Architecture Diagram
 - CI/CD Pipeline
+- AWS ALB Ingress Controller
 - Service Monitoring
 - Security
 - Challenges & Lessons Learned
@@ -59,14 +60,73 @@ CI Pipeline:
 ![CI](docs/screenshots/ci.png)
 
 
+## AWS ALB Ingress Controller
+
+The AWS Application Load Balancer (ALB) Ingress Controller is used to manage Kubernetes Ingress resources in AWS EKS. It provisions an ALB in your AWS account and configures routing based on the Ingress resources. This controller provides several features, including:
+
+- Automated provisioning of ALBs: The controller automatically provisions the ALB for your Kubernetes cluster.
+- Path-based routing: The ALB can route traffic to different services within the cluster based on request paths.
+- TLS termination: ALB can handle SSL/TLS termination and forward traffic securely to the backend.
+- Integration with IAM: It uses IAM roles to authenticate and authorize access to the ALB and associated resources.
+
+
+## Installation of AWS ALB Ingress Controller
+
+To install the AWS ALB Ingress Controller, we use Helm. This section provides the steps for deploying the ALB Ingress Controller on an EKS cluster.
+
+## Prerequisites:
+
+- You should have kubectl and helm installed.
+- You need to configure IAM roles for the Kubernetes service account using OIDC and IRSA.
+
+## Step 1: Add Helm Repository
+
+Add the AWS ALB Ingress Controller Helm chart repository:
+
+```
+helm repo add eks-charts https://aws.github.io/eks-charts
+```
+
+```
+helm repo update
+```
+## Step 2: Install the ALB Ingress Controller
+
+Use the following Helm command to install the AWS ALB Ingress Controller in the kube-system namespace. This will configure the controller with the necessary IAM permissions to manage ALBs:
+
+```
+helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=taskflow-eks-cluster --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller --set region=us-east-1 --set vpcId=vpc-08d6d677f4cc5ac0
+```
+Replace your-cluster-name, your vpc id with the name of your EKS cluster and vpc id, and your-region with the AWS region where the cluster is running.
+
+## Step 3: IAM Role Configuration for ALB
+
+The ALB Ingress Controller requires an IAM role with permissions to interact with ALB resources. You need to ensure the controller uses the correct IAM role with policies such as elasticloadbalancing:* and ec2:Describe*.
+
+For this, we created an IAM service account using OIDC and IRSA to link the ALB Ingress Controller with the necessary permissions.
+
+## Troubleshooting
+
+If you encounter permission issues or ALB provisioning failures, make sure that the IAM policies are correctly configured, and the ALB controller has the appropriate access. You can refer to the EKS documentation for configuring IAM roles and policies for Kubernetes.
 
 ## Helm Deployment
 Helm is used to deploy Kubernetes resources such as services, deployments, and ingress to the EKS cluster
+
+```
+helm upgrade --install taskflow ./project-2-app/helm/taskflow
+```
 
 
 ## Service Monitoring
 
 Service monitoring was set up using Prometheus and Grafana:
+
+```
+kubectl create namespace monitoring
+```
+```
+helm install prometheus prometheus-community/kube-prometheus-stack -n monitoring
+```
 
 - Prometheus collects metrics such as pod availability and health status.
 - Grafana dashboards were created to visualize these metrics in real-time.
@@ -92,7 +152,7 @@ Security was a core focus of this project:
 
 ## Challenges:
 
-- IAM Permission Issues: I encountered issues with missing EC2 and ELB permissions, which I fixed by adding the necessary IAM roles like ec2:DescribeRouteTables and elasticloadbalancing:AddTags.
+- IAM Permission Issues: I encountered issues with missing EC2 and ELB permissions, which I fixed by adding the necessary IAM roles like )**ec2:DescribeRouteTables** and **elasticloadbalancing:AddTags**.
 - Configuring AWS Load Balancer Controller: The process of configuring the AWS Load Balancer Controller was complex and required troubleshooting missing permissions for EC2 and ELB actions.
 - Scaling and Deployment: Initially faced challenges with scaling deployments and ensuring that the Kubernetes pods were properly replicated.
 
@@ -101,21 +161,23 @@ Security was a core focus of this project:
 - Helm for Resource Management: Using Helm for Kubernetes resources simplified the process of deploying and managing infrastructure in Kubernetes.
 - CI/CD and Security Integration: Integrating Trivy in the CI pipeline was a valuable learning experience. It reinforced the need to prioritize security at every step of the deployment process.
 
-## Next Steps
-
-For Project 3, I will focus on extending the pipeline to include CD (Pull & Deploy), where I'll utilize ArgoCD for GitOps deployment. I'll also continue to enhance security, monitoring, and automation across the stack.
 
 ## Key Achievements:
 - Automated Docker image scanning with Trivy.
 - Integrated Prometheus and Grafana for monitoring and observability.
 - Managed AWS services (ECR, IAM, ALB) securely and efficiently.
 
+
+## Next Steps
+
+For Project 3, I will focus on extending the pipeline to include CD (Pull & Deploy), where I'll utilize ArgoCD for GitOps deployment. I will also continue to enhance security, monitoring, and automation across the stack.
+
+
 ## Author
 
 Okoro Onyedika
 
 Cloud/DevOps Engineer
-
 
 
 

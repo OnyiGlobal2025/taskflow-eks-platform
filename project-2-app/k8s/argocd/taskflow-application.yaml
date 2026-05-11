@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: taskflow
+  namespace: argocd          # ArgoCD resources always live in argocd namespace
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io   # cleans up resources when app is deleted
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/OnyiGlobal2025/taskflow-eks-platform
+    targetRevision: main      # watch the main branch
+    path: project-2-app/helm/taskflow   # path to your Helm chart
+
+  destination:
+    server: https://kubernetes.default.svc   # deploy to the same cluster ArgoCD runs in
+    namespace: default
+
+  syncPolicy:
+    automated:
+      prune: true       # delete resources that are removed from Git
+      selfHeal: true    # auto-fix if someone manually changes cluster state
+    syncOptions:
+      - CreateNamespace=true    # create namespace if it doesn't exist

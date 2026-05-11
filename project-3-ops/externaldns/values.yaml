@@ -1,0 +1,25 @@
+provider:
+  name: aws
+
+env:
+  - name: AWS_DEFAULT_REGION
+    value: us-east-1
+
+policy: sync           # sync means ExternalDNS will create AND delete records
+registry: txt
+txtOwnerId: taskflow   # unique identifier so ExternalDNS knows which records it owns
+
+domainFilters:
+  - okorojeremiah.online   # only manage records for your domain
+
+serviceAccount:
+  create: true
+  name: external-dns
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::713923090919:role/ExternalDNSRole  # we'll create this role in Step 4
+
+sources:
+  - ingress    # watch ingress resources for hostnames
+  - service    # watch services too
+
+logLevel: info

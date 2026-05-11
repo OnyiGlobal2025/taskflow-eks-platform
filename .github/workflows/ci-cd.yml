@@ -6,21 +6,24 @@ on:
       - main
     paths:
       - "project-2-app/**"
-      - ".github/workflows/ci-cd.yml"
+
+permissions:
+  id-token: write   # required for OIDC token generation
+  contents: read    # required to checkout code
 
 jobs:
-  build-scan-and-push:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::713923090919:role/taskflow-github-actions-role
+          role-session-name: github-actions-taskflow
           aws-region: us-east-1
 
       - name: Login to ECR
@@ -38,26 +41,21 @@ jobs:
           docker build -t taskflow-frontend:v1 ./project-2-app/frontend
           docker tag taskflow-frontend:v1 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/taskflow-frontend:v1
 
-      - name: Scan Backend Image with Trivy
+      # DevSecOps — Security Scan
+      - name: Scan Backend Image
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: taskflow-backend:v1
-          severity: HIGH,CRITICAL
-          exit-code: "0"
-          ignore-unfixed: true
 
-      - name: Scan Frontend Image with Trivy
+      - name: Scan Frontend Image
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: taskflow-frontend:v1
-          severity: HIGH,CRITICAL
-          exit-code: "0"
-          ignore-unfixed: true
 
-      - name: Push Backend Image to ECR
+      - name: Push Backend Image
         run: |
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/taskflow-backend:v1
 
-      - name: Push Frontend Image to ECR
+      - name: Push Frontend Image
         run: |
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/taskflow-frontend:v1

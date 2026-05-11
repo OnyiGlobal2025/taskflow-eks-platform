@@ -6,7 +6,7 @@ metadata:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80,"HTTPS":443}]'
-    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:713923090919:certificate/752a8ed9-b7ac-4978-b8f8-d1ec2ca8808f"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:713923090919:certificate/a9ed4dcb-e6e3-4285-874a-22b0436afd2e"
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     external-dns.alpha.kubernetes.io/hostname: app.okorojeremiah.online
 spec:

@@ -116,6 +116,12 @@ Stored AWS credentials in GitHub secrets are a security risk — if leaked, they
 - GitHub Actions workflow updated with `id-token: write` permission
 - Old `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` secrets deleted
 
+> **Note:** The GitHub Actions pipeline triggers only on changes to `project-2-app/**`.
+> Infrastructure manifests and GitOps configurations are managed separately —
+> ArgoCD watches the Git repository and syncs cluster state automatically.
+> This is intentional: application builds and infrastructure management are
+> separate concerns in a production GitOps workflow.
+
 ## OIDC Pipeline Success
 ![OIDC Pipeline](docs/screenshots/oidc-pipeline-success.png)
 
@@ -319,6 +325,262 @@ taskflow-eks-platform/
 - 📊 Real-time cluster observability via Grafana dashboards
 - 🔐 Zero stored AWS credentials — OIDC throughout
 - ⚖️ Auto-scaling configured and proven working
+
+
+---
+
+## Key Commands Reference
+
+### ArgoCD
+```bash
+# Install ArgoCD via Helm
+helm install argocd argo/argo-cd \
+  --namespace argocd \
+  --values project-2-app/k8s/argocd/values.yaml
+
+# Port-forward ArgoCD UI
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+# Get ArgoCD admin password
+kubectl get secret argocd-initial-admin-secret \
+  -n argocd \
+  -o jsonpath="{.data.password}" | base64 -d
+
+# Apply ArgoCD Application manifest
+kubectl apply -f project-2-app/k8s/argocd/taskflow-application.yaml
+
+# Check application sync status
+kubectl get applications -n argocd
+```
+
+### Cognito
+```bash
+# Create Cognito Kubernetes secret
+kubectl create secret generic cognito-config \
+  --namespace=default \
+  --from-literal=COGNITO_USER_POOL_ID=us-east-1_JnNaeqzhu \
+  --from-literal=COGNITO_CLIENT_ID=47f46knuieb3dec20cfipsvqhq \
+  --from-literal=COGNITO_REGION=us-east-1 \
+  --from-literal=COGNITO_DOMAIN=us-east-1jnnaeqzhu.auth.us-east-1.amazoncognito.com
+
+# Verify secret
+kubectl get secret cognito-config -n default
+```
+
+### HPA & Metrics Server
+```bash
+# Install Metrics Server
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# Verify Metrics Server
+kubectl get deployment metrics-server -n kube-system
+
+# Check node metrics
+kubectl top nodes
+
+# Apply HPA manifests
+kubectl apply -f project-2-app/k8s/hpa/backend-hpa.yaml
+kubectl apply -f project-2-app/k8s/hpa/frontend-hpa.yaml
+
+# Watch HPA in real time
+kubectl get hpa -n default -w
+
+# Add resource requests via patch
+kubectl patch deployment taskflow-backend -n default --patch '{
+  "spec": {
+    "template": {
+      "spec": {
+        "containers": [{
+          "name": "taskflow-backend",
+          "resources": {
+            "requests": {"cpu": "100m", "memory": "128Mi"},
+            "limits": {"cpu": "500m", "memory": "512Mi"}
+          }
+        }]
+      }
+    }
+  }
+}'
+```
+
+### ExternalDNS
+```bash
+# Create IAM policy
+aws iam create-policy \
+  --policy-name ExternalDNSPolicy \
+  --policy-document file://project-3-ops/externaldns/externaldns-policy.json
+
+# Create IRSA role
+aws iam create-role \
+  --role-name ExternalDNSRole \
+  --assume-role-policy-document '{...}'
+
+# Attach policy to role
+aws iam attach-role-policy \
+  --role-name ExternalDNSRole \
+  --policy-arn arn:aws:iam::713923090919:policy/ExternalDNSPolicy
+
+# Install ExternalDNS via Helm
+helm install external-dns external-dns/external-dns \
+  --namespace default \
+  --values values.yaml
+
+# Check ExternalDNS logs
+kubectl logs -l app.kubernetes.io/name=external-dns -n default --tail=20
+```
+
+### ACM & Route 53
+```bash
+# Request ACM certificate via CLI
+aws acm request-certificate \
+  --domain-name "okorojeremiah.online" \
+  --subject-alternative-names "*.okorojeremiah.online" \
+  --validation-method DNS \
+  --region us-east-1
+
+# Check certificate status
+aws acm describe-certificate \
+  --certificate-arn arn:aws:acm:us-east-1:713923090919:certificate/YOUR-CERT-ARN \
+  --query "Certificate.SubjectAlternativeNames" \
+  --output table
+
+# List hosted zones
+aws route53 list-hosted-zones \
+  --query "HostedZones[*].{Name:Name,Id:Id}" \
+  --output table
+```
+
+### RDS
+```bash
+# Create RDS security group
+aws ec2 create-security-group \
+  --group-name taskflow-rds-sg \
+  --description "Security group for Taskflow RDS PostgreSQL" \
+  --vpc-id vpc-0abeed09a66fc59b7
+
+# Allow VPC traffic on port 5432
+aws ec2 authorize-security-group-ingress \
+  --group-id YOUR-SG-ID \
+  --protocol tcp \
+  --port 5432 \
+  --cidr 10.0.0.0/16
+
+# Create RDS subnet group
+aws rds create-db-subnet-group \
+  --db-subnet-group-name taskflow-rds-subnet-group \
+  --db-subnet-group-description "Subnet group for Taskflow RDS" \
+  --subnet-ids subnet-0478c55deced328ac subnet-056318ca9f58f0288
+
+# Create RDS instance
+aws rds create-db-instance \
+  --db-instance-identifier taskflow-db \
+  --db-instance-class db.t3.micro \
+  --engine postgres \
+  --engine-version 15.7 \
+  --master-username taskflowadmin \
+  --master-user-password YOUR-PASSWORD \
+  --allocated-storage 20 \
+  --db-name taskflowdb \
+  --vpc-security-group-ids YOUR-SG-ID \
+  --db-subnet-group-name taskflow-rds-subnet-group \
+  --no-publicly-accessible \
+  --backup-retention-period 7 \
+  --storage-encrypted \
+  --region us-east-1
+
+# Check RDS status
+aws rds describe-db-instances \
+  --db-instance-identifier taskflow-db \
+  --query "DBInstances[0].{Status:DBInstanceStatus,Endpoint:Endpoint.Address}" \
+  --output table
+
+# Create RDS Kubernetes secret
+kubectl create secret generic rds-credentials \
+  --namespace=default \
+  --from-literal=DB_HOST=YOUR-RDS-ENDPOINT \
+  --from-literal=DB_PORT=5432 \
+  --from-literal=DB_NAME=taskflowdb \
+  --from-literal=DB_USER=taskflowadmin \
+  --from-literal=DB_PASSWORD=YOUR-PASSWORD
+```
+
+### Monitoring
+```bash
+# Add Prometheus community Helm repo
+helm repo add prometheus-community \
+  https://prometheus-community.github.io/helm-charts
+helm repo update
+
+# Create Grafana credentials secret
+kubectl create secret generic grafana-credentials \
+  --namespace monitoring \
+  --from-literal=admin-password=YOUR-PASSWORD \
+  --from-literal=admin-user=admin
+
+# Install kube-prometheus-stack
+helm install monitoring prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace \
+  --values project-3-ops/monitoring/values.yaml
+
+# Check monitoring pods
+kubectl get pods -n monitoring
+
+# Port-forward Grafana UI
+kubectl port-forward svc/monitoring-grafana 3000:80 -n monitoring
+```
+
+### General Cluster Health
+```bash
+# Check all pods
+kubectl get pods -n default
+
+# Check all pods across all namespaces
+kubectl get pods -A
+
+# Check HPA status
+kubectl get hpa -n default
+
+# Check ingress
+kubectl get ingress -n default
+
+# Check all Helm releases
+helm list -n default
+helm list -n argocd
+helm list -n monitoring
+```
+
+### Destroy Order
+```bash
+# 1. Uninstall Helm releases
+helm uninstall taskflow -n default
+helm uninstall argocd -n argocd
+helm uninstall external-dns -n default
+helm uninstall monitoring -n monitoring
+
+# 2. Delete Kubernetes secrets
+kubectl delete secret cognito-config -n default
+kubectl delete secret rds-credentials -n default
+kubectl delete secret grafana-credentials -n monitoring
+
+# 3. Delete RDS
+aws rds delete-db-instance \
+  --db-instance-identifier taskflow-db \
+  --skip-final-snapshot \
+  --region us-east-1
+
+# 4. Delete RDS subnet group (after RDS is fully deleted)
+aws rds delete-db-subnet-group \
+  --db-subnet-group-name taskflow-rds-subnet-group
+
+# 5. Delete security group
+aws ec2 delete-security-group \
+  --group-id sg-0480552053c16de56
+
+# 6. Terraform destroy
+cd project-1-infra/terraform
+terraform destroy -auto-approve
+```
 
 ---
 

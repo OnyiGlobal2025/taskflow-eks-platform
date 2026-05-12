@@ -318,13 +318,13 @@ taskflow-eks-platform/
 
 ## Key Achievements
 
-- 🌐 Live app accessible at `https://app.okorojeremiah.online`
-- 🔒 Fully secured with HTTPS and ACM wildcard certificate
-- 🗄️ Data persists across pod restarts via RDS PostgreSQL
-- 🔄 Full GitOps loop — Git push triggers automatic cluster sync
-- 📊 Real-time cluster observability via Grafana dashboards
-- 🔐 Zero stored AWS credentials — OIDC throughout
-- ⚖️ Auto-scaling configured and proven working
+-  Live app accessible at `https://app.okorojeremiah.online`
+-  Fully secured with HTTPS and ACM wildcard certificate
+-  Data persists across pod restarts via RDS PostgreSQL
+-  Full GitOps loop — Git push triggers automatic cluster sync
+-  Real-time cluster observability via Grafana dashboards
+-  Zero stored AWS credentials — OIDC throughout
+-  Auto-scaling configured and proven working
 
 
 ---

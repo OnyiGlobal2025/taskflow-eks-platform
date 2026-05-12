@@ -1,3 +1,16 @@
+
+data "aws_eks_cluster_auth" "cluster" {
+  name = aws_eks_cluster.taskflow_eks_cluster.name
+}
+
+provider "kubernetes" {
+  host                   = aws_eks_cluster.taskflow_eks_cluster.endpoint
+  cluster_ca_certificate = base64decode(
+    aws_eks_cluster.taskflow_eks_cluster.certificate_authority[0].data
+  )
+  token = data.aws_eks_cluster_auth.cluster.token
+}
+
 resource "aws_vpc" "taskflow_vpc" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -108,20 +121,6 @@ resource "aws_route_table_association" "taskflow_private_subnet_2_association" {
   route_table_id = aws_route_table.taskflow_private_route_table.id
 }
 
-resource "aws_ecr_repository" "taskflow_frontend_ecr" {
-  name = "taskflow-frontend"
-  tags = {
-    Name = "taskflow-frontend"
-  }
-}
-
-resource "aws_ecr_repository" "taskflow_backend_ecr" {
-  name = "taskflow-backend"
-  tags = {
-    Name = "taskflow-backend"
-  }
-}
-
 # IAM Role for EKS Cluster
 resource "aws_iam_role" "taskflow_eks_cluster_role" {
   name = "taskflow-eks-cluster-role"
@@ -204,6 +203,57 @@ resource "aws_eks_cluster" "taskflow_eks_cluster" {
   }
 }
 
+#OIDC Provider for EKS Cluster
+data "tls_certificate" "eks" {
+  url = aws_eks_cluster.taskflow_eks_cluster.identity[0].oidc[0].issuer
+}
+
+resource "aws_iam_openid_connect_provider" "eks" {
+  url = aws_eks_cluster.taskflow_eks_cluster.identity[0].oidc[0].issuer
+
+  client_id_list = ["sts.amazonaws.com"]
+
+  thumbprint_list = [
+    data.tls_certificate.eks.certificates[0].sha1_fingerprint
+  ]
+}
+
+#IAM Policy for AWS Load Balancer Controller
+resource "aws_iam_policy" "alb_controller_policy" {
+  name = "AWSLoadBalancerControllerPolicy"
+
+  policy = file("${path.module}/iam-alb-policy.json")
+}
+
+#IAM Role for AWS Load Balancer Controller with IRSA
+data "aws_iam_policy_document" "alb_assume_role" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.eks.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub"
+      values   = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
+    }
+  }
+}
+
+resource "aws_iam_role" "alb_controller" {
+  name               = "alb-controller-irsa-role"
+  assume_role_policy = data.aws_iam_policy_document.alb_assume_role.json
+}
+
+# Attach the ALB Controller policy to the IRSA role
+resource "aws_iam_role_policy_attachment" "alb_attach" {
+  role       = aws_iam_role.alb_controller.name
+  policy_arn = aws_iam_policy.alb_controller_policy.arn
+}
+
 resource "aws_eks_node_group" "taskflow_eks_node_group" {
   cluster_name    = aws_eks_cluster.taskflow_eks_cluster.name
   node_group_name = "taskflow-eks-node-group"
@@ -228,5 +278,17 @@ resource "aws_eks_node_group" "taskflow_eks_node_group" {
 
   tags = {
     Name = "taskflow-eks-node-group"
+  }
+}
+
+# Create Kubernetes Service Account for AWS Load Balancer Controller with IRSA
+resource "kubernetes_service_account_v1" "alb_controller" {
+  metadata {
+    name      = "aws-load-balancer-controller"
+    namespace = "kube-system"
+
+    annotations = {
+      "eks.amazonaws.com/role-arn" = aws_iam_role.alb_controller.arn
+    }
   }
 }

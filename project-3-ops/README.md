@@ -1,4 +1,4 @@
-markdown# Project 3: GitOps, Security & Advanced Kubernetes Operations
+## Project 3: GitOps, Security & Advanced Kubernetes Operations
 
 ![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD-EF7B4D?style=for-the-badge&logo=argo)
 ![AWS Cognito](https://img.shields.io/badge/Auth-Cognito-FF9900?style=for-the-badge&logo=amazonaws)
@@ -151,7 +151,7 @@ A fixed number of pods cannot handle variable traffic. HPA monitors real CPU and
 Installed ExternalDNS via Helm with an IRSA-scoped IAM role. Configured it to watch ingress resources and automatically create Route 53 DNS records.
 
 **Why this matters:**
-Without ExternalDNS, every time the ALB DNS name changes you'd manually update DNS records. ExternalDNS reads the `external-dns.alpha.kubernetes.io/hostname` annotation from your ingress and creates/updates Route 53 records automatically — zero manual DNS management.
+Without ExternalDNS, every time the ALB DNS name changes you would manually update DNS records. ExternalDNS reads the `external-dns.alpha.kubernetes.io/hostname` annotation from your ingress and creates/updates Route 53 records automatically — zero manual DNS management.
 
 **Real proof:**
 After deploying the updated ingress with `app.okorojeremiah.online`, ExternalDNS logs showed:

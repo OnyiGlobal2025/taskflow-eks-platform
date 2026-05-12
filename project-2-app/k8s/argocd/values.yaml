@@ -11,9 +11,9 @@ server:
       alb.ingress.kubernetes.io/target-type: ip               # routes directly to pod IPs (required for Fargate or standard EKS)
       alb.ingress.kubernetes.io/backend-protocol: HTTP        # ArgoCD server speaks HTTP internally (because of server.insecure below)
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
-      alb.ingress.kubernetes.io/certificate-arn: ""           # leave blank for now; you'll fill this in during Part 6 (ACM)
+      alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:713923090919:certificate/752a8ed9-b7ac-4978-b8f8-d1ec2ca8808f"          # leave blank for now; you'll fill this in during Part 6 (ACM)
     hosts:
-      - argocd.yourdomain.com                                 # replace with your actual domain; ties into Part 5 (ExternalDNS)
+      - argocd.okorojeremiah.online                                # replace with your actual domain; ties into Part 5 (ExternalDNS)
 
 configs:
   params:

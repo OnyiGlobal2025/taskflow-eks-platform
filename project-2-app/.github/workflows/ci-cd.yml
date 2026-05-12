@@ -7,6 +7,10 @@ on:
     paths:
       - "project-2-app/**"
 
+permissions:
+  id-token: write   # required for OIDC token generation
+  contents: read    # required to checkout code
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -15,11 +19,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::713923090919:role/taskflow-github-actions-role
+          role-session-name: github-actions-taskflow
           aws-region: us-east-1
 
       - name: Login to ECR

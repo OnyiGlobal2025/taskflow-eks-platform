@@ -1,15 +1,17 @@
- [![Docker](https://img.shields.io/badge/Docker-%20-blue?style=flat&logo=docker)](https://www.docker.com/) ![AWS](https://img.shields.io/badge/AWS-%20-yellow) 
- [![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](https://kubernetes.io/)
- [![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/)
- [![AWS ALB](https://img.shields.io/badge/AWS_ALB-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)](https://aws.amazon.com/elasticloadbalancing/)
+[![Docker](https://img.shields.io/badge/Docker-%20-blue?style=flat&logo=docker)](https://www.docker.com/)
+![AWS](https://img.shields.io/badge/AWS-%20-yellow)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/)
+[![AWS ALB](https://img.shields.io/badge/AWS_ALB-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)](https://aws.amazon.com/elasticloadbalancing/)
 ![Helm Status](https://img.shields.io/badge/helm-deployed-brightgreen?logo=helm)
 ![Prometheus Monitoring](https://img.shields.io/badge/Prometheus-Enabled-brightgreen?logo=prometheus)
 ![Grafana Monitoring](https://img.shields.io/badge/Grafana-Enabled-brightgreen?logo=grafana)
 ![Trivy Security Scan](https://img.shields.io/badge/Trivy-Security%20Scan-brightgreen?logo=trivy)
+![OIDC](https://img.shields.io/badge/Auth-OIDC-6DB33F?style=for-the-badge&logo=githubactions)
 
+---
 
-
-This repository contains the TaskFlow application, deployed on Amazon EKS. This second phase of the project includes the CI/CD pipeline, secure secret management, load balancing with AWS ALB, monitoring with Prometheus & Grafana, and security scans with Trivy.
+This repository contains the TaskFlow application deployed on Amazon EKS. This second phase of the project includes the CI/CD pipeline, secure secret management, load balancing with AWS ALB, monitoring with Prometheus and Grafana, and security scans with Trivy.
 
 ## Table of Contents
 - Project Overview
@@ -19,169 +21,282 @@ This repository contains the TaskFlow application, deployed on Amazon EKS. This 
 - AWS ALB Ingress Controller
 - Service Monitoring
 - Security
-- Challenges & Lessons Learned
+- Image Tagging Strategy
+- Challenges and Lessons Learned
 - Next Steps
 
+---
 
 ## Project Overview
 
-The TaskFlow application is a microservices-based platform designed to be deployed on AWS EKS. This project’s main focus was on:
+The TaskFlow application is a microservices-based platform designed to be deployed on AWS EKS. This project's main focus was on:
 
 - Setting up CI/CD pipelines using GitHub Actions to automate builds, scans, and deployments.
-- Securing sensitive data using AWS Secrets Manager.
+- Replacing stored AWS credentials with OIDC authentication for secure, keyless pipeline access.
 - Configuring AWS ALB Ingress with OIDC and IRSA for secure Kubernetes access.
-- Service monitoring and alerting with Prometheus and Grafana to ensure uptime and system health.
+- Service monitoring and observability with Prometheus and Grafana.
+- Container security scanning with Trivy on every build.
+
+---
 
 ## Technology Stack
 
-| Technology              | Description                                                                              |
-| ----------------------- | ---------------------------------------------------------------------------------------- |
-| **AWS EKS**             | Managed Kubernetes service for application deployment.                                   |
-| **Docker & ECR**        | Containerized the application and pushed images to **Elastic Container Registry** (ECR). |
-| **Helm**                | Managed Kubernetes resources with **Helm** charts.                                       |
-| **AWS Secrets Manager** | Secured sensitive credentials and data.                                                  |
-| **ALB Ingress**         | Configured **AWS ALB Ingress** to manage application traffic.                            |
-| **OIDC & IRSA**         | Used **OIDC** and **IRSA** for secure Kubernetes access with AWS IAM.                    |
-| **Prometheus**          | Monitored Kubernetes metrics such as pod availability.                                   |
-| **Grafana**             | Visualized system metrics and created dashboards for real-time monitoring.               |
-| **Trivy**               | Integrated **Trivy** in **CI** for security scanning and vulnerability management.       |
+| Technology | Description |
+|---|---|
+| **AWS EKS** | Managed Kubernetes service for application deployment |
+| **Docker & ECR** | Containerized the application and pushed images to Elastic Container Registry |
+| **Helm** | Managed Kubernetes resources with Helm charts |
+| **GitHub Actions** | Automated CI/CD pipeline for builds, scans, and deployments |
+| **OIDC** | Replaced stored AWS credentials with short-lived tokens for keyless pipeline authentication |
+| **IRSA** | IAM Roles for Service Accounts — linked IAM roles to Kubernetes service accounts |
+| **ALB Ingress** | Configured AWS ALB Ingress to manage application traffic with path-based routing |
+| **Kubernetes Secrets** | Stored sensitive credentials securely — never hardcoded in code or images |
+| **Prometheus** | Monitored Kubernetes metrics such as pod availability and resource usage |
+| **Grafana** | Visualized system metrics and created dashboards for real-time monitoring |
+| **Trivy** | Integrated security scanning in CI to prevent vulnerable images reaching production |
 
+---
 
 ## Architecture Diagram
 
-This diagram represents the high-level architecture of the project. It includes the CI/CD pipeline, application deployment on AWS EKS, integration with AWS services (IAM, Secrets Manager, etc.), and monitoring using Prometheus and Grafana.
-
-## Architecture Diagram
 ![Architecture Diagram](docs/screenshots/project2-architecture.png)
+
+---
 
 ## CI/CD Pipeline
 
-CI Pipeline:
-- GitHub Actions automatically builds Docker images and pushes them to ECR.
-- Trivy security scans are integrated into the pipeline to ensure that only clean images are pushed to production.
+### Overview
 
-## Continuous Integration
+The GitHub Actions pipeline triggers automatically on every push to the `main` branch when files inside `project-2-app/` change:
+
+```yaml
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "project-2-app/**"
+```
+
+> **Note:** The pipeline only triggers on application code changes inside `project-2-app/`. Changes to infrastructure manifests, READMEs, or other folders do not trigger the pipeline. This is intentional — infrastructure is managed separately via Terraform and GitOps manifests are managed via ArgoCD.
+
+### Pipeline Steps
+
+1. Checkout code
+2. Authenticate to AWS via OIDC (no stored credentials)
+3. Login to ECR
+4. Build backend Docker image
+5. Build frontend Docker image
+6. Scan backend image with Trivy
+7. Scan frontend image with Trivy
+8. Push backend image to ECR
+9. Push frontend image to ECR
+
+### OIDC Authentication
+
+The pipeline uses **OIDC (OpenID Connect)** instead of stored AWS access keys. GitHub issues a short-lived token per workflow run. AWS verifies the token and grants temporary credentials scoped to this specific repository and branch.
+
+```yaml
+permissions:
+  id-token: write   # required for OIDC token generation
+  contents: read    # required to checkout code
+
+- name: Configure AWS Credentials via OIDC
+  uses: aws-actions/configure-aws-credentials@v4
+  with:
+    role-to-assume: arn:aws:iam::713923090919:role/taskflow-github-actions-role
+    role-session-name: github-actions-taskflow
+    aws-region: us-east-1
+```
+
+**Why OIDC?** Stored AWS credentials are a permanent security risk — if leaked they give unlimited AWS access until manually rotated. OIDC tokens expire automatically after each job run and cannot be used outside this repository and branch.
+
+### Continuous Integration Screenshot
 ![CI](docs/screenshots/ci.png)
 
+---
+
+## Image Tagging Strategy
+
+### What was done during development
+
+During development Docker images were built and pushed manually with incrementing version tags:
+
+```bash
+# Example of manual build and push
+docker build -t taskflow-frontend:v1 ./frontend
+docker tag taskflow-frontend:v1 713923090919.dkr.ecr.us-east-1.amazonaws.com/taskflow-frontend:v1
+docker push 713923090919.dkr.ecr.us-east-1.amazonaws.com/taskflow-frontend:v1
+```
+
+Image tags were incremented manually (v1, v2, v3) and deployment manifests were updated accordingly after each build.
+
+### The production-ready approach
+
+In a production environment the correct approach is to use `github.sha` as the image tag — ensuring every build is unique, immutable, and traceable back to the exact commit that built it:
+
+```yaml
+env:
+  IMAGE_TAG: ${{ github.sha }}
+
+- name: Build Frontend Image
+  run: |
+    docker build -t taskflow-frontend:${{ env.IMAGE_TAG }} ./frontend
+    docker push 713923090919.dkr.ecr.us-east-1.amazonaws.com/taskflow-frontend:${{ env.IMAGE_TAG }}
+
+- name: Update deployment manifest
+  run: |
+    sed -i "s|taskflow-frontend:.*|taskflow-frontend:${{ env.IMAGE_TAG }}|g" \
+      helm/taskflow/templates/frontend-deployment.yaml
+
+- name: Commit updated image tag
+  run: |
+    git config user.email "actions@github.com"
+    git config user.name "GitHub Actions"
+    git add helm/taskflow/templates/frontend-deployment.yaml
+    git commit -m "ci: update image tag to ${{ env.IMAGE_TAG }}"
+    git push
+```
+
+This eliminates all manual steps — the pipeline builds, tags, pushes, updates the manifest, and commits back to Git. ArgoCD then detects the new commit and deploys automatically.
+
+---
 
 ## AWS ALB Ingress Controller
 
-The AWS Application Load Balancer (ALB) Ingress Controller is used to manage Kubernetes Ingress resources in AWS EKS. It provisions an ALB in your AWS account and configures routing based on the Ingress resources. This controller provides several features, including:
+The AWS Application Load Balancer Ingress Controller manages Kubernetes Ingress resources in EKS. It provisions an ALB in AWS and configures routing based on Ingress resources.
 
-- Automated provisioning of ALBs: The controller automatically provisions the ALB for your Kubernetes cluster.
-- Path-based routing: The ALB can route traffic to different services within the cluster based on request paths.
-- TLS termination: ALB can handle SSL/TLS termination and forward traffic securely to the backend.
-- Integration with IAM: It uses IAM roles to authenticate and authorize access to the ALB and associated resources.
+### Key features
 
+- **Path-based routing** — routes traffic to different services based on URL path
+- **TLS termination** — handles SSL/TLS and forwards traffic securely to backend
+- **IAM integration** — uses IRSA for secure access to AWS ALB resources
+- **Acts as reverse proxy and load balancer** — users never see internal pod IPs
 
-## Installation of AWS ALB Ingress Controller
+### How path-based routing works
 
-To install the AWS ALB Ingress Controller, we use Helm. This section provides the steps for deploying the ALB Ingress Controller on an EKS cluster.
+The ALB reads the URL path the user typed and matches it against your ingress rules:
 
-## Prerequisites:
-
-- You should have kubectl and helm installed.
-- You need to configure IAM roles for the Kubernetes service account using OIDC and IRSA.
-
-## Step 1: Add Helm Repository
-
-Add the AWS ALB Ingress Controller Helm chart repository:
-
+```yaml
+rules:
+  - host: app.okorojeremiah.online
+    http:
+      paths:
+        - path: /         → frontend service (port 80)
+        - path: /api      → backend service (port 5000)
+        - path: /metrics  → backend service (port 5000)
 ```
+
+When a user types `app.okorojeremiah.online/api/tasks` the ALB reads `/api/tasks`, matches it to `/api` and routes to the backend service.
+
+### Installation
+
+```bash
+# Add Helm repository
 helm repo add eks-charts https://aws.github.io/eks-charts
-```
-
-```
 helm repo update
+
+# Install ALB Ingress Controller
+helm upgrade --install aws-load-balancer-controller \
+  eks/aws-load-balancer-controller \
+  -n kube-system \
+  --set clusterName=taskflow-eks-cluster \
+  --set serviceAccount.create=false \
+  --set serviceAccount.name=aws-load-balancer-controller \
+  --set region=us-east-1 \
+  --set vpcId=YOUR-VPC-ID
 ```
-## Step 2: Install the ALB Ingress Controller
 
-Use the following Helm command to install the AWS ALB Ingress Controller in the kube-system namespace. This will configure the controller with the necessary IAM permissions to manage ALBs:
+### Deploy application via Helm
 
-```
-helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=taskflow-eks-cluster --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller --set region=us-east-1 --set vpcId=vpc-08d6d677f4cc5ac0
-```
-Replace your-cluster-name, your vpc id with the name of your EKS cluster and vpc id, and your-region with the AWS region where the cluster is running.
-
-## Step 3: IAM Role Configuration for ALB
-
-The ALB Ingress Controller requires an IAM role with permissions to interact with ALB resources. You need to ensure the controller uses the correct IAM role with policies such as elasticloadbalancing:* and ec2:Describe*.
-
-For this, we created an IAM service account using OIDC and IRSA to link the ALB Ingress Controller with the necessary permissions.
-
-## Troubleshooting
-
-If you encounter permission issues or ALB provisioning failures, make sure that the IAM policies are correctly configured, and the ALB controller has the appropriate access. You can refer to the EKS documentation for configuring IAM roles and policies for Kubernetes.
-
-## Helm Deployment
-Helm is used to deploy Kubernetes resources such as services, deployments, and ingress to the EKS cluster
-
-```
+```bash
 helm upgrade --install taskflow ./project-2-app/helm/taskflow
 ```
 
+---
 
 ## Service Monitoring
 
-Service monitoring was set up using Prometheus and Grafana:
+Prometheus and Grafana were installed using the `kube-prometheus-stack` Helm chart which provides pre-built Kubernetes dashboards out of the box.
 
-```
+```bash
+# Create monitoring namespace
 kubectl create namespace monitoring
-```
-```
-helm install prometheus prometheus-community/kube-prometheus-stack -n monitoring
+
+# Install kube-prometheus-stack
+helm install monitoring prometheus-community/kube-prometheus-stack \
+  -n monitoring
 ```
 
-- Prometheus collects metrics such as pod availability and health status.
-- Grafana dashboards were created to visualize these metrics in real-time.
+- **Prometheus** collects metrics from all pods, nodes, and the Kubernetes API
+- **Grafana** visualizes those metrics in real-time dashboards
 
-## Prometheus Alerts
-![prometheus Alerts](docs/screenshots/prometheus-alerts.png)
+### Dashboards configured
+- Kubernetes / Compute Resources / Cluster — overall cluster health
+- Kubernetes / Compute Resources / Namespace (Pods) — per pod metrics
+- Kubernetes / Nodes — node level CPU and memory
 
-## Grafana Dashboard
+### Grafana Dashboard
 ![Grafana Dashboard](docs/screenshots/grafana-dashboard.png)
 
-
+---
 
 ## Security
 
 Security was a core focus of this project:
 
-- AWS Secrets Manager was used to handle sensitive data like API keys and credentials.
-- IAM permissions were fixed to ensure secure access between EKS and ALB Ingress.
-- Trivy was used for continuous security scanning of Docker images to ensure that only clean and secure images are pushed to the production environment.
+- **OIDC** replaced stored AWS credentials in the pipeline entirely — no `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` stored anywhere
+- **IRSA** linked IAM roles to Kubernetes service accounts — pods get scoped temporary credentials automatically
+- **Kubernetes Secrets** stored all sensitive credentials — never hardcoded in code or Docker images
+- **Trivy** scanned every Docker image before pushing to ECR — vulnerable images never reach production
+- **IAM least privilege** — each role has only the permissions it needs
 
+---
 
-## Challenges & Lessons Learned
+## Challenges and Lessons Learned
 
-## Challenges:
+| Challenge | Root Cause | Resolution |
+|---|---|---|
+| IAM permission issues | Missing `ec2:DescribeRouteTables` and `elasticloadbalancing:AddTags` permissions | Added missing permissions to the ALB controller IAM policy |
+| ALB not provisioning | ALB Ingress Controller misconfigured | Verified IRSA setup and corrected service account annotation |
+| Pods not scaling properly | Missing resource requests on deployments | Added CPU and memory requests to all deployment manifests |
+| OIDC token not generated | Missing `id-token: write` permission in workflow | Added permissions block at the top level of the workflow file |
 
-- IAM Permission Issues: I encountered issues with missing EC2 and ELB permissions, which I fixed by adding the necessary IAM roles like )**ec2:DescribeRouteTables** and **elasticloadbalancing:AddTags**.
-- Configuring AWS Load Balancer Controller: The process of configuring the AWS Load Balancer Controller was complex and required troubleshooting missing permissions for EC2 and ELB actions.
-- Scaling and Deployment: Initially faced challenges with scaling deployments and ensuring that the Kubernetes pods were properly replicated.
+### Lessons Learned
 
-## Lessons Learned:
-- Importance of IAM Role Mapping: Setting up IRSA and managing IAM permissions correctly is crucial for accessing AWS resources securely.
-- Helm for Resource Management: Using Helm for Kubernetes resources simplified the process of deploying and managing infrastructure in Kubernetes.
-- CI/CD and Security Integration: Integrating Trivy in the CI pipeline was a valuable learning experience. It reinforced the need to prioritize security at every step of the deployment process.
+- **IRSA is essential** — managing IAM permissions correctly is the foundation of secure EKS deployments
+- **Helm simplifies everything** — packaging manifests into a chart with a single values.yaml makes deployments reproducible and rollbacks instant
+- **OIDC over access keys** — short-lived tokens are always safer than long-lived stored credentials
+- **Static image tags are an antipattern** — `v1` works for learning but production requires unique immutable tags per commit using `github.sha`
 
+---
 
-## Key Achievements:
-- Automated Docker image scanning with Trivy.
-- Integrated Prometheus and Grafana for monitoring and observability.
-- Managed AWS services (ECR, IAM, ALB) securely and efficiently.
+## Key Achievements
 
+- Replaced stored AWS credentials with OIDC — zero credentials stored in GitHub
+- Automated Docker image scanning with Trivy on every build
+- Configured path-based routing with ALB — frontend and backend on one domain
+- Integrated Prometheus and Grafana with pre-built Kubernetes dashboards
+- Managed all AWS services securely using IRSA and Kubernetes secrets
+
+---
 
 ## Next Steps
 
-For Project 3, I will focus on extending the pipeline to include CD (Pull & Deploy), where I'll utilize ArgoCD for GitOps deployment. I will also continue to enhance security, monitoring, and automation across the stack.
+Project 3 extends this platform with:
+- GitOps with ArgoCD — automatic cluster sync on every Git push
+- AWS Cognito — managed user authentication
+- HPA — automatic pod autoscaling based on CPU and memory
+- ExternalDNS — automatic Route 53 DNS management
+- ACM — wildcard TLS certificate for HTTPS
+- RDS PostgreSQL — persistent database storage
 
+---
 
 ## Author
 
 Okoro Onyedika
 
-Cloud/DevOps Engineer
+Cloud / DevOps Engineer
 
-
-
+Learning in public • Building real projects • Growing daily

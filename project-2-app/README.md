@@ -7,7 +7,6 @@
 ![Prometheus Monitoring](https://img.shields.io/badge/Prometheus-Enabled-brightgreen?logo=prometheus)
 ![Grafana Monitoring](https://img.shields.io/badge/Grafana-Enabled-brightgreen?logo=grafana)
 ![Trivy Security Scan](https://img.shields.io/badge/Trivy-Security%20Scan-brightgreen?logo=trivy)
-![OIDC](https://img.shields.io/badge/Auth-OIDC-6DB33F?style=for-the-badge&logo=githubactions)
 
 ---
 
@@ -32,8 +31,8 @@ This repository contains the TaskFlow application deployed on Amazon EKS. This s
 The TaskFlow application is a microservices-based platform designed to be deployed on AWS EKS. This project's main focus was on:
 
 - Setting up CI/CD pipelines using GitHub Actions to automate builds, scans, and deployments.
-- Replacing stored AWS credentials with OIDC authentication for secure, keyless pipeline access.
-- Configuring AWS ALB Ingress with OIDC and IRSA for secure Kubernetes access.
+- Storing AWS credentials securely in GitHub secrets for pipeline authentication.
+- Configuring AWS ALB Ingress with IRSA for secure Kubernetes access.
 - Service monitoring and observability with Prometheus and Grafana.
 - Container security scanning with Trivy on every build.
 
@@ -47,7 +46,7 @@ The TaskFlow application is a microservices-based platform designed to be deploy
 | **Docker & ECR** | Containerized the application and pushed images to Elastic Container Registry |
 | **Helm** | Managed Kubernetes resources with Helm charts |
 | **GitHub Actions** | Automated CI/CD pipeline for builds, scans, and deployments |
-| **OIDC** | Replaced stored AWS credentials with short-lived tokens for keyless pipeline authentication |
+| **AWS Credentials** | Stored securely in GitHub secrets — never hardcoded in the workflow file |
 | **IRSA** | IAM Roles for Service Accounts — linked IAM roles to Kubernetes service accounts |
 | **ALB Ingress** | Configured AWS ALB Ingress to manage application traffic with path-based routing |
 | **Kubernetes Secrets** | Stored sensitive credentials securely — never hardcoded in code or images |
@@ -83,7 +82,7 @@ on:
 ### Pipeline Steps
 
 1. Checkout code
-2. Authenticate to AWS via OIDC (no stored credentials)
+2. Authenticate to AWS via stored credentials
 3. Login to ECR
 4. Build backend Docker image
 5. Build frontend Docker image
@@ -92,24 +91,22 @@ on:
 8. Push backend image to ECR
 9. Push frontend image to ECR
 
-### OIDC Authentication
+### AWS Credentials Authentication
 
-The pipeline uses **OIDC (OpenID Connect)** instead of stored AWS access keys. GitHub issues a short-lived token per workflow run. AWS verifies the token and grants temporary credentials scoped to this specific repository and branch.
+The pipeline authenticates to AWS using `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` stored as GitHub secrets — never hardcoded in the workflow file:
 
 ```yaml
-permissions:
-  id-token: write   # required for OIDC token generation
-  contents: read    # required to checkout code
-
-- name: Configure AWS Credentials via OIDC
+- name: Configure AWS Credentials
   uses: aws-actions/configure-aws-credentials@v4
   with:
-    role-to-assume: arn:aws:iam::713923090919:role/taskflow-github-actions-role
-    role-session-name: github-actions-taskflow
+    aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     aws-region: us-east-1
 ```
 
-**Why OIDC?** Stored AWS credentials are a permanent security risk — if leaked they give unlimited AWS access until manually rotated. OIDC tokens expire automatically after each job run and cannot be used outside this repository and branch.
+**Why store credentials in GitHub secrets and not in the workflow file?** The workflow file lives in your Git repo which is public. Hardcoding credentials there would expose them to anyone. GitHub secrets are encrypted and only injected into the pipeline at runtime — never visible in logs or code.
+
+> **Security note:** Stored AWS credentials are long-lived. In Phase 3 these were replaced entirely with OIDC authentication — short-lived tokens that expire automatically after each job run with zero stored credentials anywhere.
 
 ### Continuous Integration Screenshot
 ![CI](docs/screenshots/ci.png)
@@ -204,7 +201,11 @@ helm upgrade --install aws-load-balancer-controller \
   --set serviceAccount.create=false \
   --set serviceAccount.name=aws-load-balancer-controller \
   --set region=us-east-1 \
-  --set vpcId=YOUR-VPC-ID
+  --set vpcId=$(aws eks describe-cluster \
+    --name taskflow-eks-cluster \
+    --region us-east-1 \
+    --query "cluster.resourcesVpcConfig.vpcId" \
+    --output text)
 ```
 
 ### Deploy application via Helm
@@ -236,6 +237,18 @@ helm install monitoring prometheus-community/kube-prometheus-stack \
 - Kubernetes / Compute Resources / Namespace (Pods) — per pod metrics
 - Kubernetes / Nodes — node level CPU and memory
 
+### Retrieve Grafana credentials
+
+**Username:** `admin`
+
+**Password:** Retrieve from the auto-generated secret:
+
+```bash
+kubectl get secret monitoring-grafana \
+  -n monitoring \
+  -o jsonpath="{.data.admin-password}" | base64 -d && echo
+```
+
 ### Grafana Dashboard
 ![Grafana Dashboard](docs/screenshots/grafana-dashboard.png)
 
@@ -245,7 +258,7 @@ helm install monitoring prometheus-community/kube-prometheus-stack \
 
 Security was a core focus of this project:
 
-- **OIDC** replaced stored AWS credentials in the pipeline entirely — no `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` stored anywhere
+- **AWS credentials** stored in GitHub secrets — never hardcoded in the workflow file
 - **IRSA** linked IAM roles to Kubernetes service accounts — pods get scoped temporary credentials automatically
 - **Kubernetes Secrets** stored all sensitive credentials — never hardcoded in code or Docker images
 - **Trivy** scanned every Docker image before pushing to ECR — vulnerable images never reach production
@@ -260,20 +273,20 @@ Security was a core focus of this project:
 | IAM permission issues | Missing `ec2:DescribeRouteTables` and `elasticloadbalancing:AddTags` permissions | Added missing permissions to the ALB controller IAM policy |
 | ALB not provisioning | ALB Ingress Controller misconfigured | Verified IRSA setup and corrected service account annotation |
 | Pods not scaling properly | Missing resource requests on deployments | Added CPU and memory requests to all deployment manifests |
-| OIDC token not generated | Missing `id-token: write` permission in workflow | Added permissions block at the top level of the workflow file |
+| ECR push failing | AWS credentials not configured correctly in GitHub secrets | Verified `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` were correctly set |
 
 ### Lessons Learned
 
 - **IRSA is essential** — managing IAM permissions correctly is the foundation of secure EKS deployments
 - **Helm simplifies everything** — packaging manifests into a chart with a single values.yaml makes deployments reproducible and rollbacks instant
-- **OIDC over access keys** — short-lived tokens are always safer than long-lived stored credentials
+- **Never hardcode credentials** — always store them in GitHub secrets, never in the workflow file
 - **Static image tags are an antipattern** — `v1` works for learning but production requires unique immutable tags per commit using `github.sha`
 
 ---
 
 ## Key Achievements
 
-- Replaced stored AWS credentials with OIDC — zero credentials stored in GitHub
+- Stored AWS credentials securely — never exposed in code or logs
 - Automated Docker image scanning with Trivy on every build
 - Configured path-based routing with ALB — frontend and backend on one domain
 - Integrated Prometheus and Grafana with pre-built Kubernetes dashboards
@@ -286,6 +299,7 @@ Security was a core focus of this project:
 Project 3 extends this platform with:
 - GitOps with ArgoCD — automatic cluster sync on every Git push
 - AWS Cognito — managed user authentication
+- OIDC — replacing stored AWS credentials with short-lived tokens
 - HPA — automatic pod autoscaling based on CPU and memory
 - ExternalDNS — automatic Route 53 DNS management
 - ACM — wildcard TLS certificate for HTTPS
@@ -297,6 +311,6 @@ Project 3 extends this platform with:
 
 Okoro Onyedika
 
-Cloud / DevOps Engineer
+Cloud / Platform Engineer
 
 Learning in public • Building real projects • Growing daily
